@@ -5,6 +5,7 @@ import FastingCalculator from './FastingCalculator';
 import MetricsPanel from './MetricsPanel';
 import WeightChart from './WeightChart';
 import ProgressDashboard from './ProgressDashboard'; // Import the new component
+import Greeting from './Greeting';
 import type { Metric } from '../types';
 
 interface DashboardProps {
@@ -29,6 +30,7 @@ export default function Dashboard({ user }: DashboardProps) {
       </header>
 
       <main className="max-w-5xl mx-auto p-4 space-y-6">
+        <Greeting user={user} />
         <ProgressDashboard metrics={metrics} />
         <FastingCalculator />
         <MetricsPanel uid={user.uid} onMetricsUpdated={setMetrics} />

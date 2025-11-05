@@ -2,15 +2,40 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { addHours } from '../utils/date';
 
+const FASTING_START_TIME_KEY = 'fastingStartTime';
+
 function getCurrentTime() {
     const now = new Date();
     return now.toTimeString().slice(0, 5);
 }
 
+function getInitialStartTime(): string {
+    try {
+        const savedTime = localStorage.getItem(FASTING_START_TIME_KEY);
+        // Basic validation for HH:MM format
+        if (savedTime && /^\d{2}:\d{2}$/.test(savedTime)) {
+            return savedTime;
+        }
+    } catch (error) {
+        console.error("Failed to read start time from localStorage", error);
+    }
+    return getCurrentTime();
+}
+
 export default function FastingCalculator() {
-  const [startTime, setStartTime] = useState<string>(getCurrentTime());
+  const [startTime, setStartTime] = useState<string>(getInitialStartTime());
   const eatingEnd = useMemo(() => addHours(startTime, 8), [startTime]);
   const fastingEnd = useMemo(() => addHours(eatingEnd, 16), [eatingEnd]);
+
+  useEffect(() => {
+    try {
+      if (startTime) {
+        localStorage.setItem(FASTING_START_TIME_KEY, startTime);
+      }
+    } catch (error) {
+      console.error("Failed to save start time to localStorage", error);
+    }
+  }, [startTime]);
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6">
