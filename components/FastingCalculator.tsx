@@ -1,0 +1,44 @@
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { addHours } from '../utils/date';
+
+function getCurrentTime() {
+    const now = new Date();
+    return now.toTimeString().slice(0, 5);
+}
+
+export default function FastingCalculator() {
+  const [startTime, setStartTime] = useState<string>(getCurrentTime());
+  const eatingEnd = useMemo(() => addHours(startTime, 8), [startTime]);
+  const fastingEnd = useMemo(() => addHours(eatingEnd, 16), [eatingEnd]);
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg p-6">
+      <h2 className="text-xl font-bold mb-4 text-gray-800">מחשבון צום 16/8</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">שעת תחילת אכילה</label>
+          <input
+            type="time"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+            className="w-full border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">סיום חלון אכילה</label>
+          <input
+            type="time"
+            value={eatingEnd}
+            readOnly
+            className="w-full border-gray-300 rounded-xl px-3 py-2 bg-gray-100 cursor-not-allowed"
+          />
+        </div>
+        <div className="text-sm text-gray-700 pb-2 md:col-span-2 lg:col-span-1">
+            <p>צום עד <strong>{fastingEnd}</strong> למחרת.</p>
+        </div>
+      </div>
+      <p className="text-xs text-gray-500 mt-4">הערה: החישוב הוא בסיסי ואינו מהווה ייעוץ רפואי.</p>
+    </div>
+  );
+}

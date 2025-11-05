@@ -1,0 +1,5 @@
+{
+  "name": "Health Metrics Tracker",
+  "description": "An application to track health metrics like weight, waist circumference, body fat, steps, and workout minutes. It also includes a 16/8 fasting calculator and visualizes weight progress with a chart.",
+  "requestFramePermissions": []
+}
