@@ -1,13 +1,7 @@
-
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { addHours } from '../utils/date';
 
 const FASTING_START_TIME_KEY = 'fastingStartTime';
-
-function getCurrentTime() {
-    const now = new Date();
-    return now.toTimeString().slice(0, 5);
-}
 
 function getInitialStartTime(): string {
     try {
@@ -19,23 +13,28 @@ function getInitialStartTime(): string {
     } catch (error) {
         console.error("Failed to read start time from localStorage", error);
     }
-    return getCurrentTime();
+    // Return a consistent default if nothing is saved
+    return '09:00';
 }
 
 export default function FastingCalculator() {
   const [startTime, setStartTime] = useState<string>(getInitialStartTime());
+  const [showSavedMessage, setShowSavedMessage] = useState(false);
+  
   const eatingEnd = useMemo(() => addHours(startTime, 8), [startTime]);
   const fastingEnd = useMemo(() => addHours(eatingEnd, 16), [eatingEnd]);
 
-  useEffect(() => {
+  const handleSave = () => {
     try {
-      if (startTime) {
-        localStorage.setItem(FASTING_START_TIME_KEY, startTime);
-      }
+      localStorage.setItem(FASTING_START_TIME_KEY, startTime);
+      setShowSavedMessage(true);
+      setTimeout(() => {
+        setShowSavedMessage(false);
+      }, 2000); // Hide message after 2 seconds
     } catch (error) {
       console.error("Failed to save start time to localStorage", error);
     }
-  }, [startTime]);
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -43,12 +42,21 @@ export default function FastingCalculator() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">שעת תחילת אכילה</label>
-          <input
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            className="w-full border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="w-full border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black"
+            />
+            <button
+              onClick={handleSave}
+              className="bg-black text-white px-4 py-2 rounded-xl font-semibold hover:bg-gray-800 transition-colors text-sm whitespace-nowrap"
+            >
+              שמור
+            </button>
+          </div>
+          {showSavedMessage && <p className="text-green-600 text-xs mt-1">השעה נשמרה!</p>}
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">סיום חלון אכילה</label>

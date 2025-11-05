@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 // Fix: Use Firebase v8 compat imports to fix module export errors.
 import firebase from 'firebase/compat/app';
@@ -10,6 +9,8 @@ import WeightChart from './WeightChart';
 import ProgressDashboard from './ProgressDashboard'; // Import the new component
 import Greeting from './Greeting';
 import DailyLogPanel from './DailyLogPanel'; // Import the new daily log component
+import WeeklySummary from './WeeklySummary'; // Import the new AI summary component
+import AiCoachChat from './AiCoachChat'; // Import the new AI chat component
 import type { Metric } from '../types';
 
 interface DashboardProps {
@@ -37,6 +38,7 @@ export default function Dashboard({ user }: DashboardProps) {
       <main className="max-w-5xl mx-auto p-4 space-y-6">
         <Greeting user={user} />
         <ProgressDashboard metrics={metrics} />
+        <WeeklySummary uid={user.uid} />
         <FastingCalculator />
         <DailyLogPanel uid={user.uid} />
         <MetricsPanel uid={user.uid} onMetricsUpdated={setMetrics} />
@@ -44,6 +46,7 @@ export default function Dashboard({ user }: DashboardProps) {
         <div className="bg-white rounded-2xl shadow-lg p-4 text-sm text-gray-600">
           <p>💡 <strong>טיפ:</strong> ניתן להרחיב את המעקב ולהוסיף מדדים נוספים (כמו לחץ דם, שעות שינה, אחוזי מים וכו') על ידי הוספת שדות חדשים בטופס ושמירתם למסמך היומי במסד הנתונים.</p>
         </div>
+        <AiCoachChat uid={user.uid} />
       </main>
     </div>
   );
