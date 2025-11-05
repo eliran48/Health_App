@@ -1,10 +1,8 @@
+
 import React, { useState } from 'react';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-} from 'firebase/auth';
+// Fix: Use Firebase v8 compat imports to fix module export errors.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 import { auth } from '../services/firebase';
 
 export default function AuthCard() {
@@ -20,9 +18,11 @@ export default function AuthCard() {
     setError(null);
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        // Fix: Use Firebase v8 signInWithEmailAndPassword method.
+        await auth.signInWithEmailAndPassword(email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        // Fix: Use Firebase v8 createUserWithEmailAndPassword method.
+        await auth.createUserWithEmailAndPassword(email, password);
       }
     } catch (err: any) {
       // A more user-friendly error message can be shown
@@ -36,9 +36,11 @@ export default function AuthCard() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setError(null);
-    const provider = new GoogleAuthProvider();
+    // Fix: Use Firebase v8 GoogleAuthProvider.
+    const provider = new firebase.auth.GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      // Fix: Use Firebase v8 signInWithPopup method.
+      await auth.signInWithPopup(provider);
     } catch (err: any) {
       setError('שגיאה בהתחברות עם גוגל.');
       console.error(err);

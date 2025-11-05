@@ -1,15 +1,8 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  collection,
-  doc,
-  setDoc,
-  deleteDoc,
-  query,
-  orderBy,
-  limit,
-  getDocs,
-  serverTimestamp,
-} from 'firebase/firestore';
+// Fix: Use Firebase v8 compat imports to fix module export errors.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 import { db } from '../services/firebase';
 import type { Metric } from '../types';
 import { toLocalISODate, getWeekStartDate } from '../utils/date';
@@ -95,9 +88,10 @@ export default function MetricsPanel({ uid, onMetricsUpdated }: MetricsPanelProp
   }, [selectedDate]);
 
   const loadMetrics = useCallback(async () => {
-    const metricsRef = collection(db, 'users', uid, 'metrics');
-    const q = query(metricsRef, orderBy('date', 'desc'), limit(30));
-    const snap = await getDocs(q);
+    // Fix: Use Firebase v8 firestore syntax.
+    const metricsRef = db.collection('users').doc(uid).collection('metrics');
+    const q = metricsRef.orderBy('date', 'desc').limit(30);
+    const snap = await q.get();
     const newMetrics: Metric[] = [];
     snap.forEach((d) => newMetrics.push({ id: d.id, ...d.data() } as Metric));
     setMetrics(newMetrics);
@@ -165,9 +159,11 @@ export default function MetricsPanel({ uid, onMetricsUpdated }: MetricsPanelProp
         sleepHours: formState.sleepHours ? Number(formState.sleepHours) : null,
         waterIntake: formState.waterIntake ? Number(formState.waterIntake) : null,
         notes: formState.notes || '',
-        updatedAt: serverTimestamp(),
+        // Fix: Use Firebase v8 serverTimestamp.
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
-      await setDoc(doc(db, 'users', uid, 'metrics', weekStartDate), payload, { merge: true });
+      // Fix: Use Firebase v8 firestore syntax.
+      await db.collection('users').doc(uid).collection('metrics').doc(weekStartDate).set(payload, { merge: true });
       await loadMetrics();
     } catch (e: any) {
       setError(e?.message || 'שגיאה בשמירה');
@@ -178,7 +174,8 @@ export default function MetricsPanel({ uid, onMetricsUpdated }: MetricsPanelProp
 
   async function handleDelete(id: string) {
     if (window.confirm('האם למחוק את הרשומה?')) {
-        await deleteDoc(doc(db, 'users', uid, 'metrics', id));
+        // Fix: Use Firebase v8 firestore syntax.
+        await db.collection('users').doc(uid).collection('metrics').doc(id).delete();
         await loadMetrics();
     }
   }

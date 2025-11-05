@@ -1,15 +1,19 @@
+
 import React, { useState } from 'react';
-import { signOut, User } from 'firebase/auth';
+// Fix: Use Firebase v8 compat imports to fix module export errors.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 import { auth } from '../services/firebase';
 import FastingCalculator from './FastingCalculator';
 import MetricsPanel from './MetricsPanel';
 import WeightChart from './WeightChart';
 import ProgressDashboard from './ProgressDashboard'; // Import the new component
 import Greeting from './Greeting';
+import DailyLogPanel from './DailyLogPanel'; // Import the new daily log component
 import type { Metric } from '../types';
 
 interface DashboardProps {
-  user: User;
+  user: firebase.User;
 }
 
 export default function Dashboard({ user }: DashboardProps) {
@@ -21,7 +25,8 @@ export default function Dashboard({ user }: DashboardProps) {
         <div className="max-w-5xl mx-auto flex items-center justify-between p-4">
           <h1 className="text-xl font-bold text-gray-800">מעקב בריאות</h1>
           <button
-            onClick={() => signOut(auth)}
+            // Fix: Use Firebase v8 signOut method.
+            onClick={() => auth.signOut()}
             className="bg-gray-800 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-black transition-colors"
           >
             התנתקות
@@ -33,6 +38,7 @@ export default function Dashboard({ user }: DashboardProps) {
         <Greeting user={user} />
         <ProgressDashboard metrics={metrics} />
         <FastingCalculator />
+        <DailyLogPanel uid={user.uid} />
         <MetricsPanel uid={user.uid} onMetricsUpdated={setMetrics} />
         <WeightChart metrics={metrics} />
         <div className="bg-white rounded-2xl shadow-lg p-4 text-sm text-gray-600">

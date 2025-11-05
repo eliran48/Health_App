@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { User } from 'firebase/auth';
+// Fix: Use Firebase v8 compat imports to fix module export error.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 
 interface GreetingProps {
-  user: User;
+  user: firebase.User;
 }
 
 const FASTING_START_TIME_KEY = 'fastingStartTime';

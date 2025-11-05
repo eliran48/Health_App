@@ -12,3 +12,14 @@ export interface Metric {
   sleepHours: number | null;
   waterIntake: number | null;
 }
+
+export interface DailyLog {
+  id: string; // The date string YYYY-MM-DD
+  date: string;
+  physicalFeeling: 'great' | 'good' | 'okay' | 'bad' | null;
+  lastMealTime: string | null;
+  fastingSuccess: boolean | null;
+  bedtime: string | null;
+  steps: number | null;
+  proteinIntake: number | null;
+}
