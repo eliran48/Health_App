@@ -1,11 +1,16 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
-// Fix: Use Firebase v8 compat imports to fix module export errors.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/firestore';
-import { db } from '../services/firebase';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { DailyLog } from '../types';
 import { toLocalISODate } from '../utils/date';
+import { db } from '../services/firebase';
+import { 
+    collection, 
+    query, 
+    orderBy, 
+    getDocs, 
+    doc, 
+    setDoc, 
+    deleteDoc 
+} from 'firebase/firestore';
 
 const feelingOptions: { value: 'great' | 'good' | 'okay' | 'bad'; label: string }[] = [
   { value: 'great', label: 'מעולה' },
@@ -22,7 +27,7 @@ const feelingMap = {
 };
 
 interface DailyLogPanelProps {
-  uid: string;
+    uid: string;
 }
 
 export default function DailyLogPanel({ uid }: DailyLogPanelProps) {
@@ -35,23 +40,29 @@ export default function DailyLogPanel({ uid }: DailyLogPanelProps) {
         steps: '' as string | number,
         proteinIntake: '' as string | number,
     });
-    const [recentLogs, setRecentLogs] = useState<DailyLog[]>([]);
+    const [allLogs, setAllLogs] = useState<DailyLog[]>([]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const loadRecentLogs = useCallback(async () => {
-        // Fix: Use Firebase v8 firestore syntax.
-        const logsRef = db.collection('users').doc(uid).collection('dailyLogs');
-        const q = logsRef.orderBy('date', 'desc').limit(7);
-        const snap = await q.get();
-        const newLogs: DailyLog[] = [];
-        snap.forEach((d) => newLogs.push({ id: d.id, ...d.data() } as DailyLog));
-        setRecentLogs(newLogs);
+    const loadLogs = useCallback(async () => {
+        if (!uid) return;
+        try {
+            const logsCol = collection(db, 'users', uid, 'dailyLogs');
+            const q = query(logsCol, orderBy('date', 'desc'));
+            const snapshot = await getDocs(q);
+            const loadedLogs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as DailyLog));
+            setAllLogs(loadedLogs);
+        } catch (error) {
+            console.error("Error loading daily logs:", error);
+            setError("שגיאה בטעינת הרישומים.");
+        }
     }, [uid]);
 
     useEffect(() => {
-        loadRecentLogs();
-    }, [loadRecentLogs]);
+        loadLogs();
+    }, [loadLogs]);
+
+    const recentLogs = useMemo(() => allLogs.slice(0, 7), [allLogs]);
 
     const resetForm = useCallback(() => {
         setFormState({
@@ -65,27 +76,20 @@ export default function DailyLogPanel({ uid }: DailyLogPanelProps) {
     }, []);
 
     useEffect(() => {
-        const loadLogForDate = async () => {
-            if (!selectedDate) return;
-            // Fix: Use Firebase v8 firestore syntax.
-            const logRef = db.collection('users').doc(uid).collection('dailyLogs').doc(selectedDate);
-            const docSnap = await logRef.get();
-            if (docSnap.exists) {
-                const data = docSnap.data() as DailyLog;
-                setFormState({
-                    physicalFeeling: data.physicalFeeling ?? null,
-                    lastMealTime: data.lastMealTime ?? '',
-                    fastingSuccess: data.fastingSuccess ?? null,
-                    bedtime: data.bedtime ?? '',
-                    steps: data.steps ?? '',
-                    proteinIntake: data.proteinIntake ?? '',
-                });
-            } else {
-                resetForm();
-            }
-        };
-        loadLogForDate();
-    }, [selectedDate, uid, resetForm]);
+        const logForDate = allLogs.find(log => log.id === selectedDate);
+        if (logForDate) {
+            setFormState({
+                physicalFeeling: logForDate.physicalFeeling ?? null,
+                lastMealTime: logForDate.lastMealTime ?? '',
+                fastingSuccess: logForDate.fastingSuccess ?? null,
+                bedtime: logForDate.bedtime ?? '',
+                steps: logForDate.steps ?? '',
+                proteinIntake: logForDate.proteinIntake ?? '',
+            });
+        } else {
+            resetForm();
+        }
+    }, [selectedDate, allLogs, resetForm]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -101,10 +105,11 @@ export default function DailyLogPanel({ uid }: DailyLogPanelProps) {
     };
 
     const handleSave = async () => {
+        if (!uid) return;
         setError(null);
         setSaving(true);
         try {
-            const payload = {
+            const payload: Omit<DailyLog, 'id'> = {
                 date: selectedDate,
                 physicalFeeling: formState.physicalFeeling,
                 lastMealTime: formState.lastMealTime || null,
@@ -112,13 +117,11 @@ export default function DailyLogPanel({ uid }: DailyLogPanelProps) {
                 bedtime: formState.bedtime || null,
                 steps: formState.steps !== '' ? Number(formState.steps) : null,
                 proteinIntake: formState.proteinIntake !== '' ? Number(formState.proteinIntake) : null,
-                // Fix: Use Firebase v8 serverTimestamp.
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             };
 
-            // Fix: Use Firebase v8 firestore syntax.
-            await db.collection('users').doc(uid).collection('dailyLogs').doc(selectedDate).set(payload, { merge: true });
-            await loadRecentLogs();
+            const logDoc = doc(db, 'users', uid, 'dailyLogs', selectedDate);
+            await setDoc(logDoc, payload, { merge: true });
+            loadLogs();
         } catch (e: any) {
             setError(e?.message || 'שגיאה בשמירה');
         } finally {
@@ -127,12 +130,18 @@ export default function DailyLogPanel({ uid }: DailyLogPanelProps) {
     };
 
     const handleDelete = async (id: string) => {
+        if (!uid) return;
         if (window.confirm('האם למחוק את הרשומה היומית?')) {
-            // Fix: Use Firebase v8 firestore syntax.
-            await db.collection('users').doc(uid).collection('dailyLogs').doc(id).delete();
-            await loadRecentLogs();
-            if (selectedDate === id) {
-                resetForm();
+            try {
+                const docToDelete = doc(db, 'users', uid, 'dailyLogs', id);
+                await deleteDoc(docToDelete);
+                loadLogs();
+                if (selectedDate === id) {
+                    resetForm();
+                }
+            } catch (error) {
+                console.error("Error deleting log:", error);
+                setError("שגיאה במחיקת הרישום.");
             }
         }
     };

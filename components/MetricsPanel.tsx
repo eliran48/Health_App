@@ -1,11 +1,17 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-// Fix: Use Firebase v8 compat imports to fix module export errors.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/firestore';
-import { db } from '../services/firebase';
 import type { Metric } from '../types';
 import { toLocalISODate, getWeekStartDate } from '../utils/date';
+import { db } from '../services/firebase';
+import { 
+    collection, 
+    query, 
+    orderBy, 
+    limit, 
+    getDocs, 
+    doc, 
+    setDoc, 
+    deleteDoc 
+} from 'firebase/firestore';
 
 // --- Icon Components ---
 const IconWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -55,13 +61,12 @@ const WaterIcon = () => (
     </IconWrapper>
 );
 
-
 interface MetricsPanelProps {
-  uid: string;
   onMetricsUpdated: (metrics: Metric[]) => void;
+  uid: string;
 }
 
-export default function MetricsPanel({ uid, onMetricsUpdated }: MetricsPanelProps) {
+export default function MetricsPanel({ onMetricsUpdated, uid }: MetricsPanelProps) {
   const [selectedDate, setSelectedDate] = useState<string>(toLocalISODate());
   const [formState, setFormState] = useState({
     weight: '',
@@ -88,16 +93,19 @@ export default function MetricsPanel({ uid, onMetricsUpdated }: MetricsPanelProp
   }, [selectedDate]);
 
   const loadMetrics = useCallback(async () => {
-    // Fix: Use Firebase v8 firestore syntax.
-    const metricsRef = db.collection('users').doc(uid).collection('metrics');
-    const q = metricsRef.orderBy('date', 'desc').limit(30);
-    const snap = await q.get();
-    const newMetrics: Metric[] = [];
-    snap.forEach((d) => newMetrics.push({ id: d.id, ...d.data() } as Metric));
-    setMetrics(newMetrics);
-    onMetricsUpdated(newMetrics);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uid]);
+    if (!uid) return;
+    try {
+      const metricsCol = collection(db, 'users', uid, 'metrics');
+      const q = query(metricsCol, orderBy('date', 'desc'), limit(30));
+      const snapshot = await getDocs(q);
+      const loadedMetrics = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Metric));
+      setMetrics(loadedMetrics);
+      onMetricsUpdated(loadedMetrics);
+    } catch (error) {
+      console.error("Failed to load metrics from Firestore:", error);
+      setError("שגיאה בטעינת הנתונים.");
+    }
+  }, [uid, onMetricsUpdated]);
 
   useEffect(() => {
     loadMetrics();
@@ -144,27 +152,27 @@ export default function MetricsPanel({ uid, onMetricsUpdated }: MetricsPanelProp
   };
 
   async function handleSave() {
+    if (!uid) return;
     setError(null);
     setSaving(true);
     try {
-      const payload = {
+      const payload: Omit<Metric, 'id'> = {
         date: weekStartDate,
         weight: formState.weight ? Number(formState.weight) : null,
         waist: formState.waist ? Number(formState.waist) : null,
         bodyFat: formState.bodyFat ? Number(formState.bodyFat) : null,
         steps: formState.steps ? Number(formState.steps) : null,
         workout: formState.workout ? Number(formState.workout) : null,
-        workoutType: formState.workoutType || null,
-        workoutIntensity: formState.workoutIntensity || null,
+        workoutType: (formState.workoutType as Metric['workoutType']) || null,
+        workoutIntensity: (formState.workoutIntensity as Metric['workoutIntensity']) || null,
         sleepHours: formState.sleepHours ? Number(formState.sleepHours) : null,
         waterIntake: formState.waterIntake ? Number(formState.waterIntake) : null,
         notes: formState.notes || '',
-        // Fix: Use Firebase v8 serverTimestamp.
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
-      // Fix: Use Firebase v8 firestore syntax.
-      await db.collection('users').doc(uid).collection('metrics').doc(weekStartDate).set(payload, { merge: true });
-      await loadMetrics();
+      
+      const metricDoc = doc(db, 'users', uid, 'metrics', weekStartDate);
+      await setDoc(metricDoc, payload, { merge: true });
+      loadMetrics();
     } catch (e: any) {
       setError(e?.message || 'שגיאה בשמירה');
     } finally {
@@ -173,10 +181,16 @@ export default function MetricsPanel({ uid, onMetricsUpdated }: MetricsPanelProp
   }
 
   async function handleDelete(id: string) {
+    if (!uid) return;
     if (window.confirm('האם למחוק את הרשומה?')) {
-        // Fix: Use Firebase v8 firestore syntax.
-        await db.collection('users').doc(uid).collection('metrics').doc(id).delete();
-        await loadMetrics();
+      try {
+        const docToDelete = doc(db, 'users', uid, 'metrics', id);
+        await deleteDoc(docToDelete);
+        loadMetrics();
+      } catch (error) {
+        console.error("Error deleting metric: ", error);
+        setError("שגיאה במחיקת הרשומה.");
+      }
     }
   }
 

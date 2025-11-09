@@ -1,12 +1,4 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-// Fix: Use Firebase v8 compat imports to fix module export error.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-
-interface GreetingProps {
-  user: firebase.User;
-}
 
 const FASTING_START_TIME_KEY = 'fastingStartTime';
 
@@ -26,17 +18,16 @@ const formatTimeLeft = (ms: number): string => {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function Greeting({ user }: GreetingProps) {
+export default function Greeting() {
   const [now, setNow] = useState(new Date());
 
   const greeting = useMemo(() => {
     const hour = now.getHours();
-    const name = user.displayName?.split(' ')[0] || '';
-    if (hour >= 5 && hour < 12) return `בוקר טוב, ${name}`;
-    if (hour >= 12 && hour < 18) return `צהריים טובים, ${name}`;
-    if (hour >= 18 && hour < 22) return `ערב טוב, ${name}`;
-    return `לילה טוב, ${name}`;
-  }, [now, user.displayName]);
+    if (hour >= 5 && hour < 12) return `בוקר טוב`;
+    if (hour >= 12 && hour < 18) return `צהריים טובים`;
+    if (hour >= 18 && hour < 22) return `ערב טוב`;
+    return `לילה טוב`;
+  }, [now]);
   
   const fastingInfo = useMemo(() => {
     try {
@@ -90,6 +81,7 @@ export default function Greeting({ user }: GreetingProps) {
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
       <h2 className="text-2xl font-bold text-gray-800">{greeting}</h2>
+      <p className="text-gray-600">מוכן לעקוב אחר ההתקדמות שלך היום?</p>
       {fastingInfo && (
         <div className="mt-2">
             <p className="text-gray-600">{fastingInfo.message}</p>

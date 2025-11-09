@@ -1,33 +1,36 @@
-
 import React, { useState, useEffect } from 'react';
-// Fix: Use Firebase v8 compat imports to fix module export errors.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
+import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './services/firebase';
-import AuthCard from './components/AuthCard';
 import Dashboard from './components/Dashboard';
+import AuthCard from './components/AuthCard';
 
 export default function App() {
-  const [user, setUser] = useState<firebase.User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fix: Use Firebase v8 onAuthStateChanged method.
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
+
+  const handleLogout = () => {
+    signOut(auth);
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-xl font-semibold">טוען...</div>
+        <p className="text-gray-600">טוען...</p>
       </div>
     );
   }
 
-  return user ? <Dashboard user={user} /> : <AuthCard />;
+  return user ? (
+    <Dashboard uid={user.uid} handleLogout={handleLogout} />
+  ) : (
+    <AuthCard />
+  );
 }

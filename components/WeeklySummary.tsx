@@ -1,9 +1,9 @@
-
 import React, { useState, useCallback } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { db } from '../services/firebase';
 import { toLocalISODate } from '../utils/date';
 import type { Metric, DailyLog } from '../types';
+import { db } from '../services/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 interface WeeklySummaryProps {
     uid: string;
@@ -15,6 +15,10 @@ export default function WeeklySummary({ uid }: WeeklySummaryProps) {
     const [error, setError] = useState('');
 
     const generateSummary = useCallback(async () => {
+        if (!uid) {
+            setError("יש להתחבר כדי ליצור סיכום.");
+            return;
+        }
         setLoading(true);
         setError('');
         setSummary('');
@@ -26,25 +30,24 @@ export default function WeeklySummary({ uid }: WeeklySummaryProps) {
             sevenDaysAgo.setDate(today.getDate() - 7);
             const sevenDaysAgoISO = toLocalISODate(sevenDaysAgo);
 
-            const metricsRef = db.collection('users').doc(uid).collection('metrics');
-            const weeklyMetricsQuery = metricsRef.where('date', '>=', sevenDaysAgoISO).orderBy('date', 'desc');
-            const metricsSnap = await weeklyMetricsQuery.get();
-            const weekMetrics: Metric[] = [];
-            metricsSnap.forEach(doc => weekMetrics.push({ id: doc.id, ...doc.data() } as Metric));
+            const metricsCol = collection(db, 'users', uid, 'metrics');
+            const metricsQuery = query(metricsCol, where('date', '>=', sevenDaysAgoISO));
+            const metricsSnapshot = await getDocs(metricsQuery);
+            const weekMetrics = metricsSnapshot.docs.map(doc => doc.data());
 
-            const dailyLogsRef = db.collection('users').doc(uid).collection('dailyLogs');
-            const weeklyLogsQuery = dailyLogsRef.where('date', '>=', sevenDaysAgoISO).orderBy('date', 'desc');
-            const logsSnap = await weeklyLogsQuery.get();
-            const weekLogs: DailyLog[] = [];
-            logsSnap.forEach(doc => weekLogs.push({ id: doc.id, ...doc.data() } as DailyLog));
+            const logsCol = collection(db, 'users', uid, 'dailyLogs');
+            const logsQuery = query(logsCol, where('date', '>=', sevenDaysAgoISO));
+            const logsSnapshot = await getDocs(logsQuery);
+            const weekLogs = logsSnapshot.docs.map(doc => doc.data());
             
             if (weekMetrics.length === 0 && weekLogs.length === 0) {
                 setError("לא נמצאו נתונים מהשבוע האחרון כדי ליצור סיכום.");
+                setLoading(false);
                 return;
             }
 
             // 2. Initialize the Gemini API
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
             // 3. Create the prompt
             const prompt = `
@@ -77,7 +80,8 @@ export default function WeeklySummary({ uid }: WeeklySummaryProps) {
 
         } catch (err: any) {
             console.error("Error generating summary:", err);
-            setError("אירעה שגיאה ביצירת הסיכום. אנא נסה שוב מאוחר יותר.");
+            const detailedError = `אירעה שגיאה ביצירת הסיכום. הסיבה: ${err.message || 'שגיאה לא ידועה'}`;
+            setError(detailedError);
         } finally {
             setLoading(false);
         }

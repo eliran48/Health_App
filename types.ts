@@ -23,3 +23,11 @@ export interface DailyLog {
   steps: number | null;
   proteinIntake: number | null;
 }
+
+export interface Recipe {
+  id: string;
+  name: string;
+  ingredients: string;
+  instructions: string;
+  createdAt: string; // ISO date string
+}
