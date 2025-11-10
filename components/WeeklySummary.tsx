@@ -19,17 +19,13 @@ export default function WeeklySummary({ uid }: WeeklySummaryProps) {
             setError("יש להתחבר כדי ליצור סיכום.");
             return;
         }
+        // Fix: Removed check for API key as it is assumed to be present in the environment.
         setLoading(true);
         setError('');
         setSummary('');
 
         try {
-            // 1. Check for API Key
-            if (!process.env.API_KEY) {
-                throw new Error("מפתח ה-API של Gemini אינו מוגדר. יש להגדיר את המשתנה API_KEY בהגדרות הפרויקט בפלטפורמת האירוח שלך (לדוגמה, Vercel).");
-            }
-
-            // 2. Fetch data from the last 7 days from Firestore
+            // 1. Fetch data from the last 7 days from Firestore
             const today = new Date();
             const sevenDaysAgo = new Date(today);
             sevenDaysAgo.setDate(today.getDate() - 7);
@@ -51,10 +47,11 @@ export default function WeeklySummary({ uid }: WeeklySummaryProps) {
                 return;
             }
 
-            // 3. Initialize the Gemini API
+            // 2. Initialize the Gemini API
+            // Fix: Use process.env.API_KEY as per the coding guidelines.
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-            // 4. Create the prompt
+            // 3. Create the prompt
             const prompt = `
                 אתה מאמן בריאות אישי, תומך ומעודד. המשימה שלך היא לנתח את הנתונים הבריאותיים של המשתמש מהשבוע האחרון ולספק לו סיכום קצר, תובנות והמלצות. כתוב את התשובה בעברית.
 
@@ -75,7 +72,7 @@ export default function WeeklySummary({ uid }: WeeklySummaryProps) {
                 הקפד על טון חיובי ומקצועי. השתמש בפורמט Markdown בסיסי (כותרות עם ##, הדגשות עם **, ורשימות) כדי שהתצוגה תהיה ברורה.
             `;
 
-            // 5. Call the Gemini API
+            // 4. Call the Gemini API
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: prompt,
