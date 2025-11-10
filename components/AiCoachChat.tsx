@@ -86,6 +86,9 @@ export default function AiCoachChat({ uid }: AiCoachChatProps) {
     // Initialize the chat session
     useEffect(() => {
         try {
+            if (!process.env.API_KEY) {
+                throw new Error("מפתח ה-API של Gemini אינו מוגדר. יש להגדיר את המשתנה API_KEY בהגדרות הפרויקט בפלטפורמת האירוח שלך (לדוגמה, Vercel).");
+            }
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             const chatSession = ai.chats.create({
                 model: 'gemini-2.5-flash',
